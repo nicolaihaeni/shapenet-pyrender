@@ -46,14 +46,21 @@ for ii in range(1, n_views):
     depth = depth.reshape(-1)
     rays = get_rays_np(H, W, K, c2w)
 
+    u = np.arange(0, W)
+    v = np.arange(0, H)
+    u, v = np.meshgrid(u, v)
+    u, v = u.reshape(-1), v.reshape(-1)
+
+    uv = np.stack((u, v, np.ones_like(u)), axis=-1)
+    xy = (np.linalg.inv(K) @ np.transpose(uv)) * depth[None, :]
+    x = np.transpose(xy)[:, 0]
+    y = np.transpose(xy)[:, 1]
+    depth = np.sqrt(x ** 2 + y ** 2 + depth ** 2)
+
     rays = rays.reshape(-1, 6)
     rays0, raysd = rays[:, :3], rays[:, 3:]
     raysd = raysd / np.linalg.norm(raysd, axis=-1, keepdims=True)
     pts = rays0 + raysd * (depth[:, None])
-
-    indices = np.where(mask.reshape(-1))
-    pts = pts[indices]
-    colors = img.reshape(-1, 3)[indices]
 
     indices = np.where(mask.reshape(-1))
     pts = pts[indices]
