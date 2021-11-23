@@ -55,6 +55,10 @@ for ii in range(1, n_views):
     pts = pts[indices]
     colors = img.reshape(-1, 3)[indices]
 
+    indices = np.where(mask.reshape(-1))
+    pts = pts[indices]
+    colors = img.reshape(-1, 3)[indices]
+
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame(0.1).transform(c2w)
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pts)
