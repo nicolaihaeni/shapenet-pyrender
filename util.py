@@ -5,6 +5,37 @@ import numpy as np
 import math
 from functools import reduce
 
+np.seterr(divide="ignore", invalid="ignore")
+
+
+def depth_2_normal(depth, depth_unvalid, K):
+    H, W = depth.shape
+    grad_out = np.zeros((H, W, 3))
+    X, Y = np.meshgrid(np.arange(0, W), np.arange(0, H))
+
+    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+    X = ((X - cx) / fx) * depth
+    Y = ((Y - cy) / fy) * depth
+
+    XYZ_camera = np.stack([X, Y, depth], axis=-1)
+
+    # compute tangent vectors
+    vx = XYZ_camera[1:-1, 2:, :] - XYZ_camera[1:-1, 1:-1, :]
+    vy = XYZ_camera[2:, 1:-1, :] - XYZ_camera[1:-1, 1:-1, :]
+
+    # finally compute cross product
+    normal = np.cross(vx.reshape(-1, 3), vy.reshape(-1, 3))
+    normal_norm = np.linalg.norm(normal, axis=-1)
+    normal = np.divide(normal, normal_norm[:, None])
+
+    # reshape to image
+    normal_out = normal.reshape(H - 2, W - 2, 3)
+    grad_out[1:-1, 1:-1, :] = 0.5 - 0.5 * normal_out
+
+    # zero out +Inf
+    grad_out[depth_unvalid] = 0.0
+    return grad_out
+
 
 def normalize(vec):
     return vec / (np.linalg.norm(vec, axis=-1, keepdims=True) + 1e-9)
@@ -39,6 +70,16 @@ def sample_spherical(n, radius=1.0):
     xyz = np.random.normal(size=(n, 3))
     xyz = normalize(xyz) * radius
     return xyz
+
+
+def sample_half_sphere(n, radius, elev=30):
+    theta = np.random.uniform(0, 2 * np.pi, n)
+    phi = np.random.uniform(math.radians(40), math.radians(80), n)
+
+    x = radius * np.cos(theta) * np.sin(phi)
+    z = radius * np.sin(theta) * np.sin(phi)
+    y = radius * np.cos(phi)
+    return np.concatenate([x[:, None], y[:, None], z[:, None]], axis=-1)
 
 
 # Blender: camera looks in negative z-direction, y points up, x points right.

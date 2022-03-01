@@ -3,8 +3,7 @@ import glob
 import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
-
-RAY_DEPTH = True
+import trimesh
 
 
 def get_rays_np(H, W, K, c2w):
@@ -22,7 +21,16 @@ def get_rays_np(H, W, K, c2w):
     return np.concatenate((rays_o, rays_d), axis=-1)
 
 
-base_path = "/home/nicolai/sra/code/shapenet-pyrender/shapenet_renderings/ycb/024_bowl/024_bowl.npz"
+base_path = "/home/nicolai/sra/code/shapenet-pyrender/shapenet_renderings/02958343/10716a366de708b8fac96522b26f7fd/10716a366de708b8fac96522b26f7fd.npz"
+instance_dir, instance_name = base_path.split("/")[-3:-1]
+mesh_path = os.path.join(
+    "/home/nicolai/sra/data/ShapeNetCorev2/",
+    instance_dir,
+    instance_name,
+    "models",
+    "model_normalized.obj",
+)
+
 pcd = []
 n_views = 25
 
@@ -34,6 +42,17 @@ poses = data["pose"][:n_views]
 K = data["K"]
 
 pcds = []
+
+# Load the ground truth mesh
+mesh_gt = trimesh.load(mesh_path, force="mesh")
+pts = mesh_gt.sample(100000)
+colors = np.zeros_like(pts)
+colors[:, 0] = 1
+pcd_gt = o3d.geometry.PointCloud()
+pcd_gt.points = o3d.utility.Vector3dVector(pts)
+pcd_gt.colors = o3d.utility.Vector3dVector(colors)
+
+pcds.append(pcd_gt)
 pcds.append(o3d.geometry.TriangleMesh.create_coordinate_frame(0.1))
 for ii in range(1, n_views):
     img = rgbs[ii]
@@ -46,16 +65,16 @@ for ii in range(1, n_views):
     depth = depth.reshape(-1)
     rays = get_rays_np(H, W, K, c2w)
 
-    u = np.arange(0, W)
-    v = np.arange(0, H)
-    u, v = np.meshgrid(u, v)
-    u, v = u.reshape(-1), v.reshape(-1)
+    # u = np.arange(0, W)
+    # v = np.arange(0, H)
+    # u, v = np.meshgrid(u, v)
+    # u, v = u.reshape(-1), v.reshape(-1)
 
-    uv = np.stack((u, v, np.ones_like(u)), axis=-1)
-    xy = (np.linalg.inv(K) @ np.transpose(uv)) * depth[None, :]
-    x = np.transpose(xy)[:, 0]
-    y = np.transpose(xy)[:, 1]
-    depth = np.sqrt(x ** 2 + y ** 2 + depth ** 2)
+    # uv = np.stack((u, v, np.ones_like(u)), axis=-1)
+    # xy = (np.linalg.inv(K) @ np.transpose(uv)) * depth[None, :]
+    # x = np.transpose(xy)[:, 0]
+    # y = np.transpose(xy)[:, 1]
+    # depth = np.sqrt(x ** 2 + y ** 2 + depth ** 2)
 
     rays = rays.reshape(-1, 6)
     rays0, raysd = rays[:, :3], rays[:, 3:]
