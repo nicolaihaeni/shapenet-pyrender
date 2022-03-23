@@ -11,6 +11,7 @@ import trimesh
 import imageio
 import open3d as o3d
 from mathutils import Matrix
+import h5py
 
 from mesh_to_sdf import get_surface_point_cloud
 
@@ -18,8 +19,8 @@ import pyrender
 import util
 
 
-np.random.seed(0)
-random.seed(0)
+np.random.seed(12433)
+random.seed(12433)
 
 p = argparse.ArgumentParser(
     description="Renders given obj file by rotation a camera around it."
@@ -27,7 +28,7 @@ p = argparse.ArgumentParser(
 p.add_argument(
     "--data_dir",
     type=str,
-    default="/home/nicolai/sra/data/ycb/",
+    default="/labdata/nicolai/data/ShapeNetCore.v2",
     help="Data directory containing meshes.",
 )
 p.add_argument(
@@ -35,12 +36,6 @@ p.add_argument(
     type=str,
     default="./images",
     help="The path the output will be dumped to.",
-)
-p.add_argument(
-    "--num_models",
-    type=int,
-    default=1,
-    help="Number of objects in the scene",
 )
 p.add_argument(
     "--num_views",
@@ -52,16 +47,10 @@ p.add_argument("--resolution", type=int, default=256, help="output image resolut
 p.add_argument(
     "--sphere_radius",
     type=float,
-    default=1.5,
+    default=1.3,
     help="Radius of the viewing sphere",
 )
-p.add_argument("--mode", type=str, default="train", help="Options: train and test")
-p.add_argument(
-    "--dataset", type=str, default="shapenet", help="Options: shapenet and google"
-)
-p.add_argument(
-    "--category", type=str, default="car", help="Options: car, chair, household"
-)
+p.add_argument("--train", type=bool, default=True, help="Train or test split")
 p.add_argument(
     "--save_png",
     action="store_true",
@@ -71,12 +60,6 @@ p.add_argument(
     "--show_3d",
     action="store_true",
     help="Save output images for visualization",
-)
-p.add_argument(
-    "--proc_id",
-    type=int,
-    default=0,
-    help="process id",
 )
 
 
@@ -100,98 +83,80 @@ def normalize_mesh(mesh):
 def main():
     args = p.parse_args()
     instance_names = []
-    train = True
+    train = args.train
 
-    if args.dataset == "shapenet":
-        if args.category == "cars":
-            shapenet_categories = ["02958343"]
-        elif args.category == "chairs":
-            shapenet_categories = ["03001627"]
-        elif args.category == "bowl":
-            shapenet_categories = ["02880940"]
-        elif args.category == "multi-shape":
-            shapenet_categories = ["03001627"]
-        else:
-            if train:
-                shapenet_categories = [
-                    "04379243",
-                    "02958343",
-                    "03001627",
-                    "02691156",
-                    "04256520",
-                    "04090263",
-                    "03636649",
-                    "04530566",
-                    "02828884",
-                    "03691459",
-                    "02933112",
-                    "03211117",
-                    "04401088",
-                ]
-            else:
-                shapenet_categories = [
-                    "02924116",
-                    "02808440",
-                    "03467517",
-                    "03325088",
-                    "03046257",
-                    "03991062",
-                    "03593526",
-                    "02876657",
-                    "02871439",
-                    "03642806",
-                    "03624134",
-                    "04468005",
-                    "02747177",
-                    "03790512",
-                    "03948459",
-                    "03337140",
-                    "02818832",
-                    "03928116",
-                    "04330267",
-                    "03797390",
-                    "02880940",
-                    "04554684",
-                    "04004475",
-                    "03513137",
-                    "03761084",
-                    "04225987",
-                    "04460130",
-                    "02942699",
-                    "02801938",
-                    "02946921",
-                    "03938244",
-                    "03710193",
-                    "03207941",
-                    "04099429",
-                    "02773838",
-                    "02843684",
-                    "03261776",
-                    "03759954",
-                    "04074963",
-                    "03085013",
-                    "02834778",
-                    "02954340",
-                ]
-
-        for cat in shapenet_categories:
-            path = os.path.join(args.data_dir, cat)
-            instance_names = instance_names + [
-                os.path.join(cat, f)
-                for f in sorted(os.listdir(path))
-                if os.path.isdir(os.path.join(path, f))
-            ]
-    elif args.dataset == "google" or args.dataset == "ycb":
-        instance_names = [
-            f
-            for f in sorted(os.listdir(args.data_dir))
-            if os.path.isdir(os.path.join(args.data_dir, f))
+    if train:
+        shapenet_categories = [
+            "04379243",
+            "02958343",
+            "03001627",
+            "02691156",
+            "04256520",
+            "04090263",
+            "03636649",
+            "04530566",
+            "02828884",
+            "03691459",
+            "02933112",
+            "03211117",
+            "04401088",
         ]
     else:
-        print("Dataset generation for requested dataset not implemented")
-        raise NotImplementedError
+        shapenet_categories = [
+            "02924116",
+            "02808440",
+            "03467517",
+            "03325088",
+            "03046257",
+            "03991062",
+            "03593526",
+            "02876657",
+            "02871439",
+            "03642806",
+            "03624134",
+            "04468005",
+            "02747177",
+            "03790512",
+            "03948459",
+            "03337140",
+            "02818832",
+            "03928116",
+            "04330267",
+            "03797390",
+            "02880940",
+            "04554684",
+            "04004475",
+            "03513137",
+            "03761084",
+            "04225987",
+            "04460130",
+            "02942699",
+            "02801938",
+            "02946921",
+            "03938244",
+            "03710193",
+            "03207941",
+            "04099429",
+            "02773838",
+            "02843684",
+            "03261776",
+            "03759954",
+            "04074963",
+            "03085013",
+            # "02834778",
+            "02954340",
+        ]
 
-    instance_names = instance_names[args.proc_id * 8000 :]
+    for cat in shapenet_categories:
+        path = os.path.join(args.data_dir, cat)
+        new_instances = [
+            os.path.join(cat, f)
+            for f in sorted(os.listdir(path))
+            if os.path.isdir(os.path.join(path, f))
+        ]
+        if not train:
+            new_instances = new_instances[:10]
+        instance_names = instance_names + new_instances
 
     if len(instance_names) == 0:
         print("Data dir does not contain any instances")
@@ -206,41 +171,25 @@ def main():
     count = 0
     for instance_name in instance_names:
         runtime_error = False
-        if args.dataset == "shapenet":
-            category, instance_name = instance_name.split("/")
 
-            if os.path.exists(os.path.join(args.output_dir, f"{instance_name}.npz")):
-                continue
+        category, instance_name = instance_name.split("/")
+        if os.path.exists(os.path.join(args.output_dir, f"{instance_name}.h5")):
+            continue
 
-            try:
-                mesh = trimesh.load(
-                    os.path.join(
-                        args.data_dir,
-                        category,
-                        instance_name,
-                        "models",
-                        "model_normalized.obj",
-                    ),
-                    force="mesh",
-                )
-            except ValueError:
-                continue
-        elif args.dataset == "google":
-            if os.path.exists(os.path.join(args.output_dir, f"{instance_name}.npz")):
-                continue
-
-            category = "google"
+        try:
             mesh = trimesh.load(
-                os.path.join(args.data_dir, instance_name, "meshes", "model.obj"),
+                os.path.join(
+                    args.data_dir,
+                    category,
+                    instance_name,
+                    "models",
+                    "model_normalized.obj",
+                ),
+                force="mesh",
             )
-        elif args.dataset == "ycb":
-            if os.path.exists(os.path.join(args.output_dir, f"{instance_name}.npz")):
-                continue
-
-            category = "ycb"
-            mesh = trimesh.load(
-                os.path.join(args.data_dir, instance_name, "models", "textured.obj"),
-            )
+        except ValueError:
+            print(f"ValueError with instance {instance_name}. Skipping....")
+            continue
 
         # Normalize the mesh to unit diagonal
         mesh = normalize_mesh(mesh)
@@ -289,6 +238,7 @@ def main():
             except RuntimeError:
                 print(f"RuntimeError with instance: {instance_name}. Skipping...")
                 runtime_error = True
+                r.delete()
                 break
 
             normals.append(util.depth_2_normal(depth, depth == 0.0, K))
@@ -311,17 +261,19 @@ def main():
                 )
 
         if runtime_error:
+            runtime_error = False
             continue
 
-        rgb = np.stack([r for r in rgbs])
+        rgbs = np.stack([r for r in rgbs])
 
         # Check if all images are white. If yes, continue without saving the model
-        if np.all(rgb == 255):
+        if np.all(rgbs == 255):
             continue
 
-        depth = np.stack([r for r in depths])
+        depths = np.stack([r for r in depths])
         masks = np.stack([r for r in masks])
         poses = np.stack([r for r in c2ws])
+        normals = np.stack([r for r in normals])
 
         # Generate 3D supervision data for the prior
         number_of_points = 250000
@@ -353,26 +305,23 @@ def main():
                 )
             o3d.visualization.draw_geometries(frames + [pcd])
 
-        np.savez_compressed(
-            os.path.join(args.output_dir, f"{instance_name}.npz"),
-            rgb=rgb,
-            depth=depth,
-            mask=masks,
-            pose=poses,
-            K=K,
-            sphere_radius=args.sphere_radius,
-            sdf=sdf_pts,
-            category=category,
-            normals=normals,
-        )
+        hf = h5py.File(os.path.join(args.output_dir, f"{instance_name}.h5"), "w")
+        hf.create_dataset("rgb", data=rgbs, compression="gzip", dtype="f")
+        hf.create_dataset("depth", data=depths, compression="gzip", dtype="f")
+        hf.create_dataset("mask", data=masks, compression="gzip", dtype="f")
+        hf.create_dataset("normals", data=normals, compression="gzip", dtype="f")
+        hf.create_dataset("pose", data=poses, compression="gzip", dtype="f")
+        hf.create_dataset("K", data=K, dtype="f")
+        hf.create_dataset("sphere_radius", data=args.sphere_radius, dtype="f")
+        hf.create_dataset("sdf", data=sdf, compression="gzip", dtype="f")
+        hf.create_dataset("category", data=category)
+        hf.close()
+
         count += 1
 
-        if count == 100:
+        if count % 100 == 0:
             print(f"Generated {count} new instances")
 
-        if count == 400:
-            print("Reaching maximum iterations. Stopping...")
-            sys.exit()
     print("Finished all data generation")
 
 
