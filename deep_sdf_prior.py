@@ -50,7 +50,7 @@ p.add_argument(
     default=1.3,
     help="Radius of the viewing sphere",
 )
-p.add_argument("--train", type=bool, default=True, help="Train or test split")
+p.add_argument("--train", type=bool, default=False, help="Train or test split")
 p.add_argument(
     "--save_png",
     action="store_true",
@@ -313,7 +313,7 @@ def main():
         hf.create_dataset("pose", data=poses, compression="gzip", dtype="f")
         hf.create_dataset("K", data=K, dtype="f")
         hf.create_dataset("sphere_radius", data=args.sphere_radius, dtype="f")
-        hf.create_dataset("sdf", data=sdf, compression="gzip", dtype="f")
+        hf.create_dataset("sdf", data=sdf_pts, compression="gzip", dtype="f")
         hf.create_dataset("category", data=category)
         hf.close()
 
