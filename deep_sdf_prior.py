@@ -22,6 +22,66 @@ import util
 np.random.seed(12433)
 random.seed(12433)
 
+train_categories = [
+    "04379243",
+    "02958343",
+    "03001627",
+    "02691156",
+    "04256520",
+    "04090263",
+    "03636649",
+    "04530566",
+    "02828884",
+    "03691459",
+    "02933112",
+    "03211117",
+    "04401088",
+]
+val_categories = [
+    "02924116",
+    "02808440",
+    "03467517",
+    "03325088",
+    "03046257",
+    "03991062",
+    "03593526",
+    "02876657",
+    "02871439",
+    "03642806",
+    "03624134",
+    "04468005",
+    "02747177",
+    "03790512",
+    "03948459",
+    "03337140",
+    "02818832",
+    "03928116",
+    "04330267",
+    "03797390",
+    "02880940",
+    "04554684",
+    "04004475",
+    "03513137",
+    "03761084",
+    "04225987",
+    "04460130",
+    "02942699",
+    "02801938",
+    "02946921",
+    "03938244",
+    "03710193",
+    "03207941",
+    "04099429",
+    "02773838",
+    "02843684",
+    "03261776",
+    "03759954",
+    "04074963",
+    "03085013",
+    "02992529",
+    "02954340",
+]
+
 p = argparse.ArgumentParser(
     description="Renders given obj file by rotation a camera around it."
 )
@@ -47,10 +107,10 @@ p.add_argument("--resolution", type=int, default=256, help="output image resolut
 p.add_argument(
     "--sphere_radius",
     type=float,
-    default=1.3,
+    default=1.2,
     help="Radius of the viewing sphere",
 )
-p.add_argument("--train", type=bool, default=False, help="Train or test split")
+p.add_argument("--val", action="store_true", help="Use to render validation split")
 p.add_argument(
     "--save_png",
     action="store_true",
@@ -83,70 +143,10 @@ def normalize_mesh(mesh):
 def main():
     args = p.parse_args()
     instance_names = []
-    train = args.train
+    train = not args.val
+    shapenet_categories = train_categories + val_categories
 
-    if train:
-        shapenet_categories = [
-            "04379243",
-            "02958343",
-            "03001627",
-            "02691156",
-            "04256520",
-            "04090263",
-            "03636649",
-            "04530566",
-            "02828884",
-            "03691459",
-            "02933112",
-            "03211117",
-            "04401088",
-        ]
-    else:
-        shapenet_categories = [
-            "02924116",
-            "02808440",
-            "03467517",
-            "03325088",
-            "03046257",
-            "03991062",
-            "03593526",
-            "02876657",
-            "02871439",
-            "03642806",
-            "03624134",
-            "04468005",
-            "02747177",
-            "03790512",
-            "03948459",
-            "03337140",
-            "02818832",
-            "03928116",
-            "04330267",
-            "03797390",
-            "02880940",
-            "04554684",
-            "04004475",
-            "03513137",
-            "03761084",
-            "04225987",
-            "04460130",
-            "02942699",
-            "02801938",
-            "02946921",
-            "03938244",
-            "03710193",
-            "03207941",
-            "04099429",
-            "02773838",
-            "02843684",
-            "03261776",
-            "03759954",
-            "04074963",
-            "03085013",
-            # "02834778",
-            "02954340",
-        ]
-
+    folders = os.listdir("/labdata/nicolai/data/ShapeNetCore.v2/")
     for cat in shapenet_categories:
         path = os.path.join(args.data_dir, cat)
         new_instances = [
@@ -154,9 +154,8 @@ def main():
             for f in sorted(os.listdir(path))
             if os.path.isdir(os.path.join(path, f))
         ]
-        if not train:
-            new_instances = new_instances[:10]
         instance_names = instance_names + new_instances
+    instance_names = instance_names[:1]
 
     if len(instance_names) == 0:
         print("Data dir does not contain any instances")
@@ -276,7 +275,7 @@ def main():
         normals = np.stack([r for r in normals])
 
         # Generate 3D supervision data for the prior
-        number_of_points = 250000
+        number_of_points = 100000
         surface_pcd = get_surface_point_cloud(
             mesh, "scan", args.sphere_radius, 100, 400, 10000000, calculate_normals=True
         )
