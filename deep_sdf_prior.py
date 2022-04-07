@@ -13,7 +13,7 @@ import open3d as o3d
 from mathutils import Matrix
 import h5py
 
-from mesh_to_sdf.mesh_to_sdf import get_surface_point_cloud
+from mesh_to_sdf import get_surface_point_cloud
 
 import pyrender
 import util
