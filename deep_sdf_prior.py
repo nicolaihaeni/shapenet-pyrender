@@ -13,7 +13,7 @@ import open3d as o3d
 from mathutils import Matrix
 import h5py
 
-from mesh_to_sdf import get_surface_point_cloud
+from mesh_to_sdf.mesh_to_sdf import get_surface_point_cloud
 
 import pyrender
 import util
@@ -155,7 +155,7 @@ def main():
             if os.path.isdir(os.path.join(path, f))
         ]
         instance_names = instance_names + new_instances
-    instance_names = instance_names[:1]
+    instance_names = instance_names[:13000]
 
     if len(instance_names) == 0:
         print("Data dir does not contain any instances")
