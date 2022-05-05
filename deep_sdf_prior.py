@@ -251,10 +251,6 @@ def main():
                 mesh_errors[category].append(instance_name)
                 break
 
-            if runtime_error:
-                runtime_error = False
-                continue
-
             normals.append(util.depth_2_normal(depth, depth == 0.0, K))
 
             mask = depth != 0
@@ -273,6 +269,10 @@ def main():
                     ),
                     color,
                 )
+
+        if runtime_error:
+            runtime_error = False
+            continue
 
         rgbs = np.stack([r for r in rgbs])
 
