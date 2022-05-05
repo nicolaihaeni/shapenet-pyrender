@@ -325,8 +325,6 @@ def main():
         hf.close()
 
         count += 1
-        break
-
         if count % 100 == 0:
             print(f"Generated {count} new instances")
 
