@@ -144,70 +144,9 @@ def normalize_mesh(mesh):
 def main():
     args = p.parse_args()
     instance_names = []
-    if train:
-        train_categories = [
-            "02691156",
-            "02828884",
-            "02933112",
-            "02958343",
-            "03001627",
-            "03211117",
-            "03636649",
-            "03691459",
-            "04090263",
-            "04256520",
-            "04379243",
-            "04401088",
-            "04530566",
-        ]
-    else:
-        val_categories = [
-            "02747177",
-            "02801938",
-            "02818832",
-            "02871439",
-            "02880940",
-            "02942699",
-            "02954340",
-            "03046257",
-            "03207941",
-            "03325088",
-            "03467517",
-            "03593526",
-            "03642806",
-            "03759954",
-            "03790512",
-            "03928116",
-            "03948459",
-            "04004475",
-            "04099429",
-            "04330267",
-            "04468005",
-            "02773838",
-            "02808440",
-            "02843684",
-            "02876657",
-            "02924116",
-            "02946921",
-            "02992529",
-            "03085013",
-            "03261776",
-            "03337140",
-            "03513137",
-            "03624134",
-            "03710193",
-            "03761084",
-            "03797390",
-            "03938244",
-            "03991062",
-            "04074963",
-            "04225987",
-            "04460130",
-            "04554684",
-        ]
     shapenet_categories = train_categories + val_categories
 
-    folders = os.listdir("/labdata/nicolai/data/ShapeNetCore.v2/")
+    folders = sorted(os.listdir(args.data_dir))
     for cat in shapenet_categories:
         path = os.path.join(args.data_dir, cat)
         new_instances = [
@@ -216,7 +155,8 @@ def main():
             if os.path.isdir(os.path.join(path, f))
         ]
         instance_names = instance_names + new_instances
-    instance_names = instance_names[:13000]
+
+    instance_names = instance_names[0:10000]
 
     if len(instance_names) == 0:
         print("Data dir does not contain any instances")
@@ -300,9 +240,9 @@ def main():
                 color, depth = r.render(
                     scene, flags=pyrender.constants.RenderFlags.FLAT
                 )
-                if np.all(colors == 255):
-                    except RuntimeError
-            except RuntimeError:
+                if np.all(color == 255):
+                    raise RuntimeError("No texture rendered")
+            except Exception as e:
                 print(f"RuntimeError with instance: {instance_name}. Skipping...")
                 runtime_error = True
                 r.delete()
@@ -385,11 +325,12 @@ def main():
         hf.close()
 
         count += 1
+        break
 
         if count % 100 == 0:
             print(f"Generated {count} new instances")
 
-    with open('./failures.json'. 'w') as outfile:
+    with open(os.path.join(args.output_dir, "failures.json"), "w") as outfile:
         json.dump(mesh_errors, outfile)
     print("Finished all data generation")
 
