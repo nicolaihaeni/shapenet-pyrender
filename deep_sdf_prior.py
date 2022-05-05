@@ -12,6 +12,7 @@ import imageio
 import open3d as o3d
 from mathutils import Matrix
 import h5py
+import json
 
 from mesh_to_sdf import get_surface_point_cloud
 
@@ -143,7 +144,67 @@ def normalize_mesh(mesh):
 def main():
     args = p.parse_args()
     instance_names = []
-    train = not args.val
+    if train:
+        train_categories = [
+            "02691156",
+            "02828884",
+            "02933112",
+            "02958343",
+            "03001627",
+            "03211117",
+            "03636649",
+            "03691459",
+            "04090263",
+            "04256520",
+            "04379243",
+            "04401088",
+            "04530566",
+        ]
+    else:
+        val_categories = [
+            "02747177",
+            "02801938",
+            "02818832",
+            "02871439",
+            "02880940",
+            "02942699",
+            "02954340",
+            "03046257",
+            "03207941",
+            "03325088",
+            "03467517",
+            "03593526",
+            "03642806",
+            "03759954",
+            "03790512",
+            "03928116",
+            "03948459",
+            "04004475",
+            "04099429",
+            "04330267",
+            "04468005",
+            "02773838",
+            "02808440",
+            "02843684",
+            "02876657",
+            "02924116",
+            "02946921",
+            "02992529",
+            "03085013",
+            "03261776",
+            "03337140",
+            "03513137",
+            "03624134",
+            "03710193",
+            "03761084",
+            "03797390",
+            "03938244",
+            "03991062",
+            "04074963",
+            "04225987",
+            "04460130",
+            "04554684",
+        ]
     shapenet_categories = train_categories + val_categories
 
     folders = os.listdir("/labdata/nicolai/data/ShapeNetCore.v2/")
@@ -161,6 +222,7 @@ def main():
         print("Data dir does not contain any instances")
         raise NotImplementedError
 
+    # instance_names = instance_names[32000:]
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
@@ -168,6 +230,7 @@ def main():
 
     # Load n meshes
     count = 0
+    mesh_errors = {}
     for instance_name in instance_names:
         runtime_error = False
 
@@ -187,6 +250,9 @@ def main():
                 force="mesh",
             )
         except ValueError:
+            if category not in mesh_errors.keys():
+                mesh_errors[category] = []
+            mesh_errors[category].append(instance_name)
             print(f"ValueError with instance {instance_name}. Skipping....")
             continue
 
@@ -234,11 +300,20 @@ def main():
                 color, depth = r.render(
                     scene, flags=pyrender.constants.RenderFlags.FLAT
                 )
+                if np.all(colors == 255):
+                    except RuntimeError
             except RuntimeError:
                 print(f"RuntimeError with instance: {instance_name}. Skipping...")
                 runtime_error = True
                 r.delete()
+                if category not in mesh_errors.keys():
+                    mesh_errors[category] = []
+                mesh_errors[category].append(instance_name)
                 break
+
+            if runtime_error:
+                runtime_error = False
+                continue
 
             normals.append(util.depth_2_normal(depth, depth == 0.0, K))
 
@@ -259,16 +334,9 @@ def main():
                     color,
                 )
 
-        if runtime_error:
-            runtime_error = False
-            continue
-
         rgbs = np.stack([r for r in rgbs])
 
         # Check if all images are white. If yes, continue without saving the model
-        if np.all(rgbs == 255):
-            continue
-
         depths = np.stack([r for r in depths])
         masks = np.stack([r for r in masks])
         poses = np.stack([r for r in c2ws])
@@ -321,6 +389,8 @@ def main():
         if count % 100 == 0:
             print(f"Generated {count} new instances")
 
+    with open('./failures.json'. 'w') as outfile:
+        json.dump(mesh_errors, outfile)
     print("Finished all data generation")
 
 
